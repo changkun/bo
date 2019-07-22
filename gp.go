@@ -5,7 +5,6 @@ import (
 	"math"
 
 	"github.com/pkg/errors"
-
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat"

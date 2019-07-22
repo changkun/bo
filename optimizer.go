@@ -1,3 +1,4 @@
+// Package bo provides Bayesian optimization utilitiy.
 package bo
 
 import (
@@ -5,7 +6,6 @@ import (
 	"sync/atomic"
 
 	"github.com/pkg/errors"
-
 	"gonum.org/v1/gonum/optimize"
 )
 
@@ -313,6 +313,50 @@ func (o *Optimizer) Log(x map[Param]float64, y float64) {
 		xa = append(xa, x[p])
 	}
 	o.mu.gp.Add(xa, y)
+}
+
+// RunSerial will call f sequentially without parallelism.
+// It blocks until all rounds have elapsed, or Stop is called.
+func (o *Optimizer) RunSerial(f func(map[Param]float64) float64) (x map[Param]float64, y float64, err error) {
+	for {
+		status := atomic.LoadUint32(&o.running)
+		if status == 1 {
+			return nil, 0, errors.New("optimizer is already running")
+		}
+		if atomic.CompareAndSwapUint32(&o.running, status, 1) {
+			break
+		}
+	}
+
+	for {
+		if !o.Running() {
+			return nil, 0, errors.New("optimizer got stop signal")
+		}
+
+		x, _, err := o.Next()
+		if err != nil {
+			return nil, 0, errors.Wrapf(err, "failed to get next point")
+		}
+		if x == nil {
+			break
+		}
+		o.Log(x, f(x))
+	}
+
+	atomic.StoreUint32(&o.running, 0)
+
+	var xa []float64
+	if o.mu.minimize {
+		xa, y = o.mu.gp.Minimum()
+	} else {
+		xa, y = o.mu.gp.Maximum()
+	}
+	x = map[Param]float64{}
+	for i, v := range xa {
+		x[o.mu.params[i]] = v
+	}
+
+	return x, y, nil
 }
 
 // Run will call f the fewest times as possible while trying to maximize
