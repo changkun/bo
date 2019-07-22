@@ -1,5 +1,8 @@
 # bo
 
+[![Documentation](https://godoc.org/github.com/changkun/bo?status.svg)](http://godoc.org/github.com/changkun/bo)
+
+
 Bayesian Optimization in Go
 
 ## Example: Learning human preference
