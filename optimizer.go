@@ -2,6 +2,7 @@ package bo
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/pkg/errors"
 
@@ -40,9 +41,9 @@ type Optimizer struct {
 		minimize                    bool
 		barrierFunc                 BarrierFunc
 
-		running        bool
 		explorationErr error
 	}
+	running uint32 // atomic, 0 false 1 true
 }
 
 // OptimizerOption sets an option on the optimizer.
@@ -317,13 +318,15 @@ func (o *Optimizer) Log(x map[Param]float64, y float64) {
 // Run will call f the fewest times as possible while trying to maximize
 // the output value. It blocks until all rounds have elapsed, or Stop is called.
 func (o *Optimizer) Run(f func(map[Param]float64) float64) (x map[Param]float64, y float64, err error) {
-	o.mu.Lock()
-	if o.mu.running {
-		o.mu.Unlock()
-		return nil, 0, errors.New("optimizer is already running")
+	for {
+		status := atomic.LoadUint32(&o.running)
+		if status == 1 {
+			return nil, 0, errors.New("optimizer is already running")
+		}
+		if atomic.CompareAndSwapUint32(&o.running, status, 1) {
+			break
+		}
 	}
-	o.mu.running = true
-	o.mu.Unlock()
 
 	var wg sync.WaitGroup
 	for {
@@ -351,9 +354,7 @@ func (o *Optimizer) Run(f func(map[Param]float64) float64) (x map[Param]float64,
 		}
 	}
 
-	o.mu.Lock()
-	o.mu.running = false
-	o.mu.Unlock()
+	atomic.StoreUint32(&o.running, 0)
 
 	var xa []float64
 	if o.mu.minimize {
@@ -371,24 +372,17 @@ func (o *Optimizer) Run(f func(map[Param]float64) float64) (x map[Param]float64,
 
 // Stop stops Optimize.
 func (o *Optimizer) Stop() {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	o.mu.running = false
+	atomic.StoreUint32(&o.running, 0)
 }
 
 // Running returns whether or not the optimizer is running.
 func (o *Optimizer) Running() bool {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	return o.mu.running
+	return atomic.LoadUint32(&o.running) == 1
 }
 
 // Rounds is the number of rounds that have been run.
 func (o *Optimizer) Rounds() int {
 	o.mu.Lock()
 	defer o.mu.Unlock()
-
 	return o.mu.round
 }

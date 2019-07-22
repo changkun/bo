@@ -1,2 +1,7 @@
 # bo
-Bayesian Optimization in golang
+
+Bayesian Optimization in Go
+
+## License
+
+MIT
