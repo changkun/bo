@@ -17,9 +17,9 @@ const (
 	// DefaultMinimize is the default value of minimize.
 	DefaultMinimize = true
 
-	// NumRandPoints ...
+	// NumRandPoints is the maximum allowed number of evaluations.
 	NumRandPoints = 100000
-	// NumGradPoints ...
+	// NumGradPoints is the number of random points of gradient descent
 	NumGradPoints = 256
 )
 
@@ -44,53 +44,6 @@ type Optimizer struct {
 		explorationErr error
 	}
 	running uint32 // atomic, 0 false 1 true
-}
-
-// OptimizerOption sets an option on the optimizer.
-type OptimizerOption func(*Optimizer)
-
-// WithOutputName sets the outputs name. Only really matters if you're planning
-// on using gp/plot.
-func WithOutputName(name string) OptimizerOption {
-	return func(o *Optimizer) {
-		o.updateNames(name)
-	}
-}
-
-// WithRandomRounds sets the number of random rounds to run.
-func WithRandomRounds(rounds int) OptimizerOption {
-	return func(o *Optimizer) {
-		o.mu.randomRounds = rounds
-	}
-}
-
-// WithRounds sets the total number of rounds to run.
-func WithRounds(rounds int) OptimizerOption {
-	return func(o *Optimizer) {
-		o.mu.rounds = rounds
-	}
-}
-
-// WithExploration sets the exploration function to use.
-func WithExploration(exploration Exploration) OptimizerOption {
-	return func(o *Optimizer) {
-		o.mu.exploration = exploration
-	}
-}
-
-// WithMinimize sets whether or not to minimize. Passing false, maximizes
-// instead.
-func WithMinimize(minimize bool) OptimizerOption {
-	return func(o *Optimizer) {
-		o.mu.minimize = minimize
-	}
-}
-
-// WithBarrierFunc sets the barrier function to use.
-func WithBarrierFunc(bf BarrierFunc) OptimizerOption {
-	return func(o *Optimizer) {
-		o.mu.barrierFunc = bf
-	}
 }
 
 // NewOptimizer creates a new optimizer with the specified optimizable parameters and
@@ -204,6 +157,10 @@ func (o *Optimizer) Next() (x map[Param]float64, parallel bool, err error) {
 		// Don't return parallel on the last random round.
 		return x, o.mu.round != o.mu.randomRounds, nil
 	}
+	return o.eval()
+}
+
+func (o *Optimizer) eval() (x map[Param]float64, parallel bool, err error) {
 
 	var fErr error
 	f := func(x []float64) float64 {
@@ -295,7 +252,7 @@ func (o *Optimizer) Next() (x map[Param]float64, parallel bool, err error) {
 	return m, false, nil
 }
 
-// ExplorationErr ...
+// ExplorationErr returns the error of exploration
 func (o *Optimizer) ExplorationErr() error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -303,7 +260,7 @@ func (o *Optimizer) ExplorationErr() error {
 	return o.mu.explorationErr
 }
 
-// Log ...
+// Log adds given x and y to the gaussian process
 func (o *Optimizer) Log(x map[Param]float64, y float64) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -313,6 +270,18 @@ func (o *Optimizer) Log(x map[Param]float64, y float64) {
 		xa = append(xa, x[p])
 	}
 	o.mu.gp.Add(xa, y)
+}
+
+// Predict consumes all historical X and Y and predict the next x
+func (o *Optimizer) Predict(X []map[Param]float64, Y []float64) (x map[Param]float64, err error) {
+	for i := range X {
+		o.Log(X[i], Y[i])
+	}
+	x, _, err = o.eval()
+	if x == nil || err != nil {
+		return nil, errors.Wrapf(err, "failed to get next point")
+	}
+	return
 }
 
 // RunSerial will call f sequentially without parallelism.

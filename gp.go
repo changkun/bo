@@ -205,7 +205,7 @@ type Cov interface {
 // https://en.wikipedia.org/wiki/Mat%C3%A9rn_covariance_function#Simplification_for_.CE.BD_half_integer
 type MaternCov struct{}
 
-// Cov ...
+// Cov implements Conv interface and calculates the covariance between a and b.
 func (MaternCov) Cov(a, b []float64) float64 {
 	const p = 2
 	d := floats.Distance(a, b, 2)
@@ -219,11 +219,6 @@ func (MaternCov) Grad(a, b []float64) []float64 {
 	d := make([]float64, len(a))
 	floats.Add(d, a)
 	floats.Sub(d, b)
-	/*
-		tmp := math.Sqrt(5 * floats.Sum(d))
-		floats.Scale(5.0/3.0*(tmp+1)*math.Exp(-tmp), d)
-	*/
-
 	floats.Scale(math.Sqrt(5)+5.0/3.0*d2+math.Sqrt(5)*math.Exp(-math.Sqrt(5)/2.0*d2), d)
 	return d
 }

@@ -8,7 +8,7 @@ import (
 var _ optimize.Method = BoundsMethod{}
 var _ optimize.Statuser = BoundsMethod{}
 
-// BoundsMethod ...
+// BoundsMethod is a hack that contains the target space.
 type BoundsMethod struct {
 	Method optimize.Method
 	Bounds []Param
