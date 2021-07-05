@@ -26,7 +26,7 @@ func predict() {
 			Name: fmt.Sprintf("V-%d", i),
 		})
 	}
-	o := bo.NewOptimizer(variables, bo.WithMinimize(false))
+	o := bo.NewOptimizer(variables, bo.WithMinimize(false), bo.WithExploration(bo.EI{}))
 
 	// generate random histXs
 	genX := func() (map[bo.Param]float64, float64) {
@@ -77,7 +77,8 @@ func guess() {
 			X, Y, Z,
 		},
 		bo.WithMinimize(false),
-		bo.WithRounds(10),
+		bo.WithExploration(bo.EI{}),
+		bo.WithRounds(20),
 	)
 	x, y, err := o.RunSerial(func(params map[bo.Param]float64) float64 {
 		for {

@@ -26,6 +26,45 @@ func (e UCB) Estimate(gp *GP, minimize bool, x []float64) (float64, error) {
 	return mean + e.Kappa*sd, nil
 }
 
+type EI struct {
+}
+
+func (e EI) Estimate(gp *GP, minimize bool, x []float64) (float64, error) {
+	mean, std, err := gp.Estimate(x)
+	if err != nil {
+		return 0, err
+	}
+	a := mean //  (mean - y_max)? ymax?
+	z := a / std
+
+	if minimize {
+		return a*StdNormal.CDF(z) - std*StdNormal.PDF(z), nil
+	}
+
+	return a*StdNormal.CDF(z) + std*StdNormal.PDF(z), nil
+}
+
+// NormalDist is a normal (Gaussian) distribution with mean Mu and
+// standard deviation Sigma.
+type NormalDist struct {
+	Mu, Sigma float64
+}
+
+// StdNormal is the standard normal distribution (Mu = 0, Sigma = 1)
+var StdNormal = NormalDist{0, 1}
+
+// 1/sqrt(2 * pi)
+const invSqrt2Pi = 0.39894228040143267793994605993438186847585863116493465766592583
+
+func (n NormalDist) PDF(x float64) float64 {
+	z := x - n.Mu
+	return math.Exp(-z*z/(2*n.Sigma*n.Sigma)) * invSqrt2Pi / n.Sigma
+}
+
+func (n NormalDist) CDF(x float64) float64 {
+	return math.Erfc(-(x-n.Mu)/(n.Sigma*math.Sqrt2)) / 2
+}
+
 // BarrierFunc returns a value that is added to the value to bound the
 // optimization.
 type BarrierFunc interface {
