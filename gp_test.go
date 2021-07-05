@@ -5,8 +5,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/changkun/bo"
-	"gonum.org/v1/gonum/floats"
+	"changkun.de/x/bo"
 )
 
 func f(x, y float64) float64 {
@@ -15,6 +14,12 @@ func f(x, y float64) float64 {
 
 func gpAdd(gp *bo.GP, x, y float64) {
 	gp.Add([]float64{x, y}, f(x, y))
+}
+
+// equalWithinAbs returns true if a and b have an absolute
+// difference of less than tol.
+func equalWithinAbs(a, b, tol float64) bool {
+	return a == b || math.Abs(a-b) <= tol
 }
 
 func TestKnown(t *testing.T) {
@@ -33,10 +38,10 @@ func TestKnown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !floats.EqualWithinAbs(mean, f(0.25, 0.75), 0.0001) {
+	if !equalWithinAbs(mean, f(0.25, 0.75), 0.0001) {
 		t.Fatalf("got mean = %f; not 1", mean)
 	}
-	if !floats.EqualWithinAbs(variance, 0, 0.0001) {
+	if !equalWithinAbs(variance, 0, 0.0001) {
 		t.Fatalf("got variance = %f; not 0", variance)
 	}
 }

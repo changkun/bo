@@ -1,6 +1,6 @@
 # bo
 
-[![Documentation](https://godoc.org/github.com/changkun/bo?status.svg)](http://godoc.org/github.com/changkun/bo)
+[![Documentation](https://godoc.org/changkun.de/x/bo?status.svg)](http://godoc.org/changkun.de/x/bo)
 
 
 Bayesian Optimization in Go

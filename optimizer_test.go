@@ -10,7 +10,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/changkun/bo"
+	"changkun.de/x/bo"
 	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"
 	"gonum.org/v1/gonum/floats"
@@ -211,14 +211,14 @@ func TestOptimizer(t *testing.T) {
 	{
 		got := x[X]
 		want := 0.0
-		if !floats.EqualWithinAbs(got, want, 0.01) {
+		if !equalWithinAbs(got, want, 0.01) {
 			t.Errorf("got x = %f; not %f", got, want)
 		}
 	}
 	{
 		got := y
 		want := 1.0
-		if !floats.EqualWithinAbs(got, want, 0.01) {
+		if !equalWithinAbs(got, want, 0.01) {
 			t.Errorf("got y = %f; not %f", got, want)
 		}
 	}
@@ -258,17 +258,36 @@ func TestOptimizerMax(t *testing.T) {
 	{
 		got := x[X]
 		want := 0.0
-		if !floats.EqualWithinAbs(got, want, 0.01) {
+		if !equalWithinAbs(got, want, 0.01) {
 			t.Errorf("got x = %f; not %f", got, want)
 		}
 	}
 	{
 		got := y
 		want := 0.0
-		if !floats.EqualWithinAbs(got, want, 0.01) {
+		if !equalWithinAbs(got, want, 0.01) {
 			t.Errorf("got y = %f; not %f", got, want)
 		}
 	}
+}
+
+const minNormalFloat64 = 2.2250738585072014e-308
+
+// equalWithinRel returns true if the difference between a and b
+// is not greater than tol times the greater value.
+func equalWithinRel(a, b, tol float64) bool {
+	if a == b {
+		return true
+	}
+	delta := math.Abs(a - b)
+	if delta <= minNormalFloat64 {
+		return delta <= tol*minNormalFloat64
+	}
+	// We depend on the division in this relationship to identify
+	// infinities (we rely on the NaN to fail the test) otherwise
+	// we compare Infs of the same sign and evaluate Infs as equal
+	// independent of sign.
+	return delta/math.Max(math.Abs(a), math.Abs(b)) <= tol
 }
 
 func TestOptimizerBounds(t *testing.T) {
@@ -305,14 +324,14 @@ func TestOptimizerBounds(t *testing.T) {
 	{
 		got := x[X]
 		want := 5.0
-		if !floats.EqualWithinRel(got, want, 0.2) {
+		if !equalWithinRel(got, want, 0.2) {
 			t.Errorf("got x = %f; not %f", got, want)
 		}
 	}
 	{
 		got := y
 		want := 26.0
-		if !floats.EqualWithinRel(got, want, 0.44) {
+		if !equalWithinRel(got, want, 0.44) {
 			t.Errorf("got y = %f; not %f", got, want)
 		}
 	}

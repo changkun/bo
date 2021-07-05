@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"changkun.de/x/bo"
 	"github.com/aybabtme/rgbterm"
-	"github.com/changkun/bo"
 )
 
 // predict gives a use case on how to predict next best point x
@@ -78,10 +78,12 @@ func guess() {
 		},
 		bo.WithMinimize(false),
 		bo.WithExploration(bo.EI{}),
-		bo.WithRounds(20),
+		bo.WithRandomRounds(3),
+		bo.WithRounds(10),
 	)
 	x, y, err := o.RunSerial(func(params map[bo.Param]float64) float64 {
 		for {
+			fmt.Println(params[X], params[Y], params[Z])
 			r, g, b := uint8(params[X]*255), uint8(params[Y]*255), uint8(params[Z]*255)
 			word := "██████"
 			coloredWord := rgbterm.FgString(word, r, g, b)
