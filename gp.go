@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/pkg/errors"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat"
@@ -29,8 +28,8 @@ type GP struct {
 	dirty bool
 }
 
-// NewGP creates a new Gaussian process with the specified covariance function
-// (cov) and noise level (variance).
+// NewGP creates a new Gaussian process with the specified
+// covariance function (cov) and noise level (variance).
 func NewGP(cov Cov, noise float64) *GP {
 	return &GP{
 		cov:   cov,
@@ -38,13 +37,13 @@ func NewGP(cov Cov, noise float64) *GP {
 	}
 }
 
-// SetNames ...
+// SetNames sets the name for the inputs and output.
 func (gp *GP) SetNames(inputs []string, output string) {
 	gp.inputNames = inputs
 	gp.outputName = output
 }
 
-// Name ...
+// Name returns the name of an input w.r.t. index.
 func (gp GP) Name(i int) string {
 	if len(gp.inputNames) > i {
 		name := gp.inputNames[i]
@@ -55,7 +54,7 @@ func (gp GP) Name(i int) string {
 	return fmt.Sprintf("x[%d]", i)
 }
 
-// OutputName ...
+// OutputName returns the name of the output.
 func (gp GP) OutputName() string {
 	if len(gp.outputName) > 0 {
 		return gp.outputName
@@ -63,7 +62,7 @@ func (gp GP) OutputName() string {
 	return "y"
 }
 
-// RawData ...
+// RawData returns the raw data of the GP.
 func (gp GP) RawData() ([][]float64, []float64) {
 	inputs := make([][]float64, len(gp.inputs))
 	for i, s := range gp.inputs {
@@ -76,7 +75,7 @@ func (gp GP) RawData() ([][]float64, []float64) {
 	return inputs, outputs
 }
 
-// Dims ...
+// Dims returns the dimention of the GP inputs.
 func (gp GP) Dims() int {
 	if len(gp.inputs) > 0 {
 		return len(gp.inputs[0])
@@ -114,12 +113,12 @@ func (gp *GP) compute() error {
 	}
 	var L mat.Cholesky
 	if ok := L.Factorize(k); !ok {
-		return errors.Wrap(errors.New("failed to factorize"), "compute")
+		return errFactorize
 	}
 	b := mat.NewVecDense(n, gp.normOutputs())
 	alpha := mat.NewVecDense(n, nil)
 	if err := L.SolveVecTo(alpha, b); err != nil && !isConditionErr(err) {
-		return errors.Wrap(err, "failed to solve for alpha")
+		return fmt.Errorf("%v: %w", err, errSolveAlpha)
 	}
 
 	gp.alpha = alpha
@@ -141,7 +140,7 @@ func (gp *GP) normOutputs() []float64 {
 func (gp *GP) Estimate(x []float64) (float64, float64, error) {
 	if gp.dirty {
 		if err := gp.compute(); err != nil {
-			return 0, 0, errors.Wrap(err, "failed to run compute")
+			return 0, 0, fmt.Errorf("compute error: %w", err)
 		}
 	}
 	n := gp.n
@@ -154,7 +153,7 @@ func (gp *GP) Estimate(x []float64) (float64, float64, error) {
 
 	v := mat.NewVecDense(n, nil)
 	if err := gp.l.SolveVecTo(v, kstar); err != nil && !isConditionErr(err) {
-		return 0, 0, errors.Wrap(err, "failed to find v")
+		return 0, 0, fmt.Errorf("failed to find v: %w", err)
 	}
 	variance := gp.cov.Cov(x, x) - mat.Dot(kstar, v)
 	sd := math.Sqrt(variance)
@@ -166,7 +165,7 @@ func (gp *GP) Estimate(x []float64) (float64, float64, error) {
 func (gp *GP) Gradient(x []float64) ([]float64, error) {
 	if gp.dirty {
 		if err := gp.compute(); err != nil {
-			return nil, errors.Wrap(err, "failed to run compute")
+			return nil, fmt.Errorf("compute error: %w", err)
 		}
 	}
 	n := gp.n
@@ -193,32 +192,4 @@ func (gp *GP) Minimum() (x []float64, y float64) {
 func (gp *GP) Maximum() (x []float64, y float64) {
 	i := floats.MaxIdx(gp.outputs)
 	return gp.inputs[i], gp.outputs[i]
-}
-
-// Cov calculates the covariance between a and b.
-type Cov interface {
-	Cov(a, b []float64) float64
-	Grad(a, b []float64) []float64
-}
-
-// MaternCov calculates the covariance between a and b. nu = 2.5
-// https://en.wikipedia.org/wiki/Mat%C3%A9rn_covariance_function#Simplification_for_.CE.BD_half_integer
-type MaternCov struct{}
-
-// Cov implements Conv interface and calculates the covariance between a and b.
-func (MaternCov) Cov(a, b []float64) float64 {
-	const p = 2
-	d := floats.Distance(a, b, 2)
-	return (1 + math.Sqrt(5)*d/p + 5*d*d/(3*p*p)) * math.Exp(-math.Sqrt(5)*d/p)
-}
-
-// Grad computes the gradient of the matern covariance between a
-// and b with respect to a. nu = 2.5.
-func (MaternCov) Grad(a, b []float64) []float64 {
-	d2 := floats.Distance(a, b, 2)
-	d := make([]float64, len(a))
-	floats.Add(d, a)
-	floats.Sub(d, b)
-	floats.Scale(math.Sqrt(5)+5.0/3.0*d2+math.Sqrt(5)*math.Exp(-math.Sqrt(5)/2.0*d2), d)
-	return d
 }

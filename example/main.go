@@ -15,7 +15,7 @@ import (
 
 // predict gives a use case on how to predict next best point x
 func predict() {
-	N := 5
+	N := 10
 
 	// say a target space is N dimensions
 	variables := []bo.Param{}

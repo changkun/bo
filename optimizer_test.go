@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"changkun.de/x/bo"
-	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"
 	"gonum.org/v1/gonum/floats"
 )
@@ -45,7 +44,7 @@ func saveAll(gp *bo.GP) (string, error) {
 func RenderGP(gp *bo.GP, w io.Writer, dim int) error {
 	dims := gp.Dims()
 	if dim >= dims {
-		return errors.Errorf("requested graph of dimension %d; only %d dimensions", dim, dims)
+		return fmt.Errorf("requested graph of dimension %d; only %d dimensions", dim, dims)
 	}
 
 	inputs, outputs := gp.RawData()
